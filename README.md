@@ -11,3 +11,6 @@ You need the prerequisites of node-gyp to build this module
 * `node-gyp configure build`
 
 
+> Note: This is just a basic version and the api is not yet finalized.   
+
+
