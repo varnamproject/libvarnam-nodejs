@@ -1,6 +1,6 @@
 # Varnam 
 
-A node module for an indic transliterator library called varnam. This can be used to convert english to indic languages from javascript. 
+A node module for an indic transliterator library called [varnam](https://github.com/navaneeth/libvarnam). This can be used to convert english to indic languages from javascript. 
 
 ## How to build
 
