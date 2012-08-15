@@ -14,29 +14,31 @@ const char* ToCString(v8::String::Utf8Value& value) {
   return *value ? *value : "<string conversion failed>";
 }
 
-char* ml_unicode_transliteration(const char *filename,const char *input)
+const char* ml_unicode_transliteration(char *filename,char *input)
 {
     varnam *handle;
     int rc;
     char *msg;
-    char *output;
-    FILE *fp;   
+    varray *words;
+    char *result;
 
-    rc = varnam_init(filename, strlen(filename), &handle, &msg);
+    rc = varnam_init(filename, &handle, &msg);
      if(rc != VARNAM_SUCCESS) {
-        printf("initialization failed - %s\n", msg);
+           printf ("Initialization failed. %s\n", msg);
         return "";
     }
-
-     rc = varnam_transliterate(handle, input, &output);
-     if(rc != VARNAM_SUCCESS) {
-            printf("transliteration of %s failed  - \n", input);
-            return "";
-      }  
-    strcpy(msg,output);
-    rc = varnam_destroy(handle);
  
-     return msg;
+     rc = varnam_transliterate(handle, input, &words);
+      if(rc != VARNAM_SUCCESS) {
+         printf ("Transliteration failed. %s\n", varnam_get_last_error(handle));
+        return "";
+      }  
+
+    const char* output = ((vword*)words->memory[0])->text;
+    result = (char*)malloc(sizeof(char) * strlen(output));
+    strcpy(result,output);
+    varnam_destroy(handle);
+     return result;
 }
 
 
@@ -48,12 +50,13 @@ Handle<Value> RunCallback(const Arguments& args) {
   const unsigned argc = 1;
 
    v8::String::Utf8Value str1(args[0]);
-   const char* cstr1 = ToCString(str1);  
+ //  const char* cstr1 = ToCString(str1);  
+  char* cstr1 = str1.operator*();
 
-   v8::String::Utf8Value str2(args[1]);
-   const char* cstr2 = ToCString(str2);
+  v8::String::Utf8Value str2(args[1]);
+  char* cstr2 = str2.operator*();
  
-  char*  str3 = ml_unicode_transliteration(cstr1,cstr2);
+  const char*  str3 = ml_unicode_transliteration(cstr1,cstr2);
 
   Local<Value> argv[argc] = { Local<Value>::New(String::New(str3,strlen(str3))) };
   cb->Call(Context::GetCurrent()->Global(), argc, argv);
