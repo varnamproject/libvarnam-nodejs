@@ -1,0 +1,72 @@
+diff --git a/varnam.cc b/varnam.cc
+index 8e4a21b..185fd95 100644
+--- a/varnam.cc
++++ b/varnam.cc
+@@ -1,7 +1,8 @@
+ #include <node.h>
+ #include <stdio.h>
+-#include <string.h>
++#include <string>
+ #define LINE_MAX 1000
++
+ extern "C" {
+    #include <libvarnam/varnam.h>
+ }
+@@ -14,31 +15,29 @@ const char* ToCString(v8::String::Utf8Value& value) {
+   return *value ? *value : "<string conversion failed>";
+ }
+ 
+-const char* ml_unicode_transliteration(char *filename,char *input)
++const std::string ml_unicode_transliteration(char *filename,char *input)
+ {
+     varnam *handle;
+     int rc;
+     char *msg;
+     varray *words;
+-    char *result;
+ 
+     rc = varnam_init(filename, &handle, &msg);
+      if(rc != VARNAM_SUCCESS) {
+            printf ("Initialization failed. %s\n", msg);
+         return "";
+     }
+- 
++
+      rc = varnam_transliterate(handle, input, &words);
+       if(rc != VARNAM_SUCCESS) {
+          printf ("Transliteration failed. %s\n", varnam_get_last_error(handle));
+         return "";
+-      }  
++      }
+ 
+-    const char* output = ((vword*)words->memory[0])->text;
+-    result = (char*)malloc(sizeof(char) * strlen(output));
+-    strcpy(result,output);
++    vword *word = (vword*) varray_get(words, 0);
++    std::string result = std::string(word->text);
+     varnam_destroy(handle);
+-     return result;
++    return result;
+ }
+ 
+ 
+@@ -50,15 +49,15 @@ Handle<Value> RunCallback(const Arguments& args) {
+   const unsigned argc = 1;
+ 
+    v8::String::Utf8Value str1(args[0]);
+- //  const char* cstr1 = ToCString(str1);  
++ //  const char* cstr1 = ToCString(str1);
+   char* cstr1 = str1.operator*();
+ 
+   v8::String::Utf8Value str2(args[1]);
+   char* cstr2 = str2.operator*();
+- 
+-  const char*  str3 = ml_unicode_transliteration(cstr1,cstr2);
+ 
+-  Local<Value> argv[argc] = { Local<Value>::New(String::New(str3,strlen(str3))) };
++  const std::string result = ml_unicode_transliteration(cstr1,cstr2);
++
++  Local<Value> argv[argc] = { Local<Value>::New(String::New(result.c_str())) };
+   cb->Call(Context::GetCurrent()->Global(), argc, argv);
+ 
+   return scope.Close(Undefined());
