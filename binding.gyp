@@ -5,7 +5,7 @@
       'type': '<(library)',
       "sources": [ "varnam.cc" ],
     	'libraries':[
-        '/usr/local/lib/libvarnam.so'
+        '-lvarnam'
       ]
     }
   ]
