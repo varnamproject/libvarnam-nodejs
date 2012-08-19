@@ -1,22 +1,12 @@
-var varnam = require('./build/Release/lib.target/varnam');
+var v = require('./build/Release/lib.target/varnam');
 
+var file = "ml-unicode.vst";
 
-// addon.runCallback("ml-unicode.vst","jijEsh",function(msg){
-//   console.log(msg);
-// });
-var file="ml-unicode.vst";
-
-str = varnam.transliterate(file, "mOhan");
+var varnam = new v.Varnam(file)
+str = varnam.transliterate("mOhan");
 console.log(str);
 
-str = varnam.reverse_transliterate(file, str);
+str = varnam.reverseTransliterate(str);
 console.log(str);
 
-// addon.runCallback(file,"mohaN",function(msg){
-//   console.log(msg);
-// });
-
-
-// addon.runCallback(file,"jijEsh",function(msg){
-//   console.log(msg);
-// });
+varnam.close();
