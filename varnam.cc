@@ -1,21 +1,11 @@
-#include <node.h>
-#include <stdio.h>
-#include <string>
-#define LINE_MAX 1000
 
-extern "C" {
-   #include <libvarnam/varnam.h>
-}
-using namespace std;
+#include <node.h>
+#include <string>
+#include <libvarnam/varnam.h>
+
 using namespace v8;
 
-
-// Extracts a C string from a V8 Utf8Value.
-const char* ToCString(v8::String::Utf8Value& value) {
-  return *value ? *value : "<string conversion failed>";
-}
-
-const std::string ml_unicode_transliteration(char *filename,char *input)
+const std::string perform_transliteration(const char *filename, const char *input)
 {
     varnam *handle;
     int rc;
@@ -24,14 +14,12 @@ const std::string ml_unicode_transliteration(char *filename,char *input)
 
     rc = varnam_init(filename, &handle, &msg);
      if(rc != VARNAM_SUCCESS) {
-           printf ("Initialization failed. %s\n", msg);
-        return "";
+        return std::string(msg);
     }
 
      rc = varnam_transliterate(handle, input, &words);
       if(rc != VARNAM_SUCCESS) {
-         printf ("Transliteration failed. %s\n", varnam_get_last_error(handle));
-        return "";
+         return std::string(msg);
       }
 
     vword *word = (vword*) varray_get(words, 0);
@@ -40,32 +28,64 @@ const std::string ml_unicode_transliteration(char *filename,char *input)
     return result;
 }
 
+const std::string perform_reverse_transliteration(const char *filename, const char *input)
+{
+    varnam *handle;
+    int rc;
+    char *msg;
+    char *rtl;
 
+    rc = varnam_init(filename, &handle, &msg);
+     if(rc != VARNAM_SUCCESS) {
+        return std::string(msg);
+    }
 
-Handle<Value> RunCallback(const Arguments& args) {
-  HandleScope scope;
+    rc = varnam_reverse_transliterate(handle, input, &rtl);
+    if(rc != VARNAM_SUCCESS) {
+        return std::string(msg);
+    }
 
-  Local<Function> cb = Local<Function>::Cast(args[2]);
-  const unsigned argc = 1;
-
-   v8::String::Utf8Value str1(args[0]);
- //  const char* cstr1 = ToCString(str1);
-  char* cstr1 = str1.operator*();
-
-  v8::String::Utf8Value str2(args[1]);
-  char* cstr2 = str2.operator*();
-
-  const std::string result = ml_unicode_transliteration(cstr1,cstr2);
-
-  Local<Value> argv[argc] = { Local<Value>::New(String::New(result.c_str())) };
-  cb->Call(Context::GetCurrent()->Global(), argc, argv);
-
-  return scope.Close(Undefined());
+    std::string result = std::string(rtl);
+    varnam_destroy(handle);
+    return result;
 }
 
-void Init(Handle<Object> target) {
-  target->Set(String::NewSymbol("runCallback"),
-      FunctionTemplate::New(RunCallback)->GetFunction());
+Handle<Value> Transliterate(const Arguments& args)
+{
+  HandleScope scope;
+
+  if (args.Length() != 2) {
+    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+    return scope.Close(Undefined());
+  }
+
+  String::Utf8Value filename (args[0]->ToString());
+  String::Utf8Value input (args[1]->ToString());
+
+  std::string transliterated = perform_transliteration (*filename, *input);
+  return scope.Close(String::New(transliterated.c_str()));
+}
+
+Handle<Value> ReverseTransliterate(const Arguments& args)
+{
+  HandleScope scope;
+
+  if (args.Length() != 2) {
+    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+    return scope.Close(Undefined());
+  }
+
+  String::Utf8Value filename (args[0]->ToString());
+  String::Utf8Value input (args[1]->ToString());
+
+  std::string transliterated = perform_reverse_transliteration (*filename, *input);
+  return scope.Close(String::New(transliterated.c_str()));
+}
+
+void Init(Handle<Object> target)
+{
+  target->Set(String::NewSymbol("transliterate"), FunctionTemplate::New(Transliterate)->GetFunction());
+  target->Set(String::NewSymbol("reverse_transliterate"), FunctionTemplate::New(ReverseTransliterate)->GetFunction());
 }
 
 NODE_MODULE(varnam, Init)
