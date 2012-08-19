@@ -5,19 +5,27 @@
 
 using namespace v8;
 
-const std::string perform_transliteration(varnam *handle, const char *input)
+const Handle<Array> perform_transliteration(varnam *handle, const char *input)
 {
-    int rc;
+    int rc,i;
     varray *words;
 
     rc = varnam_transliterate(handle, input, &words);
     if(rc != VARNAM_SUCCESS) {
-      return std::string(varnam_get_last_error(handle));
+      Handle<Array> array =Array::New(1);
+      array->Set(0,String::New(varnam_get_last_error(handle)));
+      return array;
     }
 
-    vword *word = (vword*) varray_get(words, 0);
-    std::string result = std::string(word->text);
-    return result;
+    Handle<Array> array = Array::New(varray_length(words));
+
+   for (i = 0; i < varray_length (words); i++)
+   {
+     vword *word = (vword*)varray_get (words, i);
+     std::string transliterated = std::string(word->text);
+     array->Set(i,String::New(transliterated.c_str()));
+   }
+    return array;
 }
 
 const std::string perform_reverse_transliteration(varnam *handle, const char *input)
@@ -45,7 +53,7 @@ private:
   ~Varnam();
 
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
-  static v8::Handle<v8::Value> Transliterate(const v8::Arguments& args);
+  static v8::Handle<v8::Value>Transliterate(const v8::Arguments& args);
   static v8::Handle<v8::Value> ReverseTransliterate(const v8::Arguments& args);
   static v8::Handle<v8::Value> Close(const v8::Arguments& args);
 
@@ -120,9 +128,10 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
 
   String::Utf8Value input (args[0]->ToString());
   Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
-  std::string transliterated = perform_transliteration (obj->GetHandle(), *input);
+  
+  Handle<Array> array =  perform_transliteration (obj->GetHandle(), *input);
 
-  return scope.Close(String::New(transliterated.c_str()));
+  return scope.Close(array);
 }
 
 Handle<Value> Varnam::ReverseTransliterate(const Arguments& args)
