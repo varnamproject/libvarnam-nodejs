@@ -1,5 +1,12 @@
 var http = require('http');
-var addon = require('./build/Release/lib.target/varnam');
+var os = require('os')
+if (os.type().toLowerCase() == 'darwin') {
+  var addon = require('./build/Release/varnam');
+}
+else {
+  var addon = require('./build/Release/lib.target/varnam');
+}
+
 var file="ml-unicode.vst";
 
 var url = require('url');
@@ -15,9 +22,11 @@ http.createServer(function(req,res) {
            res.write('Bad request 404\n');
            res.end();
         }else{
-            var msg = varnam.transliterate(input);
-             res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8;', 'Access-Control-Allow-Origin': '*'});
-             res.write(msg);
+            var results = varnam.transliterate(input);
+            results.push("test");
+             res.writeHead(200, {'Content-Type': 'application/json; charset=utf-8;', 'Access-Control-Allow-Origin': '*'});
+             json = JSON.stringify(results);
+             res.write(json);
             res.end();
           }
     }).listen(3003);
