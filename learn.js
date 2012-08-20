@@ -1,4 +1,9 @@
-var v = require('./build/Release/lib.target/varnam');
+if (os.type().toLowerCase() == 'darwin') {
+	var v = require('./build/Release/varnam');
+}
+else {
+	var v = require('./build/Release/lib.target/varnam');
+}
 
 var file = "ml-unicode.vst";
 
