@@ -23,7 +23,6 @@ http.createServer(function(req,res) {
            res.end();
         }else{
             var results = varnam.transliterate(input);
-            results.push("test");
              res.writeHead(200, {'Content-Type': 'application/json; charset=utf-8;', 'Access-Control-Allow-Origin': '*'});
              json = JSON.stringify(results);
              res.write(json);
