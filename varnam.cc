@@ -42,6 +42,18 @@ const std::string perform_reverse_transliteration(varnam *handle, const char *in
     return result;
 }
 
+const std::string perform_learn(varnam *handle, const char *input)
+{
+    int rc;
+
+    rc = varnam_learn(handle, input);
+    if(rc != VARNAM_SUCCESS) {
+        return std::string(varnam_get_last_error(handle));
+    }
+
+    return "Success";
+}
+
 class Varnam : public node::ObjectWrap
 {
 public:
@@ -55,6 +67,7 @@ private:
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
   static v8::Handle<v8::Value>Transliterate(const v8::Arguments& args);
   static v8::Handle<v8::Value> ReverseTransliterate(const v8::Arguments& args);
+  static v8::Handle<v8::Value> Learn(const v8::Arguments& args);
   static v8::Handle<v8::Value> Close(const v8::Arguments& args);
 
   varnam *handle;
@@ -81,6 +94,8 @@ void Varnam::Init(Handle<Object> target)
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("learn"),
+      FunctionTemplate::New(Learn)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transliterate"),
       FunctionTemplate::New(Transliterate)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("reverseTransliterate"),
@@ -108,6 +123,12 @@ Handle<Value> Varnam::New(const Arguments& args)
   int rc = varnam_init(*filename, &handle, &msg);
   if (rc != VARNAM_SUCCESS) {
     ThrowException(Exception::TypeError(String::New("Initialization failed")));
+    return scope.Close(Undefined());
+  }
+
+  rc = varnam_config (handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, "learnings.varnam");
+  if (rc != VARNAM_SUCCESS) {
+    ThrowException(Exception::TypeError(String::New("Can't enable learnings")));
     return scope.Close(Undefined());
   }
 
@@ -148,6 +169,22 @@ Handle<Value> Varnam::ReverseTransliterate(const Arguments& args)
   std::string transliterated = perform_reverse_transliteration (obj->GetHandle(), *input);
 
   return scope.Close(String::New(transliterated.c_str()));
+}
+
+Handle<Value> Varnam::Learn(const Arguments& args)
+{
+  HandleScope scope;
+
+  if (args.Length() != 1) {
+    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+    return scope.Close(Undefined());
+  }
+
+  String::Utf8Value input (args[0]->ToString());
+  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
+  std::string result = perform_learn (obj->GetHandle(), *input);
+
+  return scope.Close(String::New(result.c_str()));
 }
 
 Handle<Value> Varnam::Close(const Arguments& args)
