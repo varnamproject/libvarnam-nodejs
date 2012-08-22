@@ -1,6 +1,7 @@
 
 #include <node.h>
 #include <string>
+#include <iostream>
 #include <libvarnam/varnam.h>
 
 using namespace v8;
@@ -122,7 +123,7 @@ Handle<Value> Varnam::New(const Arguments& args)
   Varnam* obj = new Varnam();
   int rc = varnam_init(*filename, &handle, &msg);
   if (rc != VARNAM_SUCCESS) {
-    ThrowException(Exception::TypeError(String::New("Initialization failed")));
+    ThrowException(Exception::TypeError(String::New(msg)));
     return scope.Close(Undefined());
   }
 
@@ -149,7 +150,7 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
 
   String::Utf8Value input (args[0]->ToString());
   Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
-  
+
   Handle<Array> array =  perform_transliteration (obj->GetHandle(), *input);
 
   return scope.Close(array);
