@@ -130,7 +130,7 @@ Handle<Value> Varnam::New(const Arguments& args)
   String::Utf8Value learnings_fname (args[1]->ToString());
   rc = varnam_config (handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, *learnings_fname);
   if (rc != VARNAM_SUCCESS) {
-    ThrowException(Exception::TypeError(String::New("Can't enable learnings")));
+    ThrowException(Exception::TypeError(String::New(varnam_get_last_error(handle))));
     return scope.Close(Undefined());
   }
 
