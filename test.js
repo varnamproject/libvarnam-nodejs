@@ -8,7 +8,7 @@ else {
 
 var file = "ml-unicode.vst";
 
-var varnam = new v.Varnam(file);
+var varnam = new v.Varnam(file, "learneddata");
 suggestions = varnam.transliterate("mOhan");
 suggestions.forEach(function(item){
    console.log(item);

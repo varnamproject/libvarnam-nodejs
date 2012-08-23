@@ -1,3 +1,4 @@
+var os = require('os')
 if (os.type().toLowerCase() == 'darwin') {
 	var v = require('./build/Release/varnam');
 }
@@ -7,7 +8,7 @@ else {
 
 var file = "ml-unicode.vst";
 
-var varnam = new v.Varnam(file);
+var varnam = new v.Varnam(file, "learned");
 
 str = varnam.learn(process.argv[2])
 console.log(str);

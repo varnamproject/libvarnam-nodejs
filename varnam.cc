@@ -114,7 +114,7 @@ Handle<Value> Varnam::New(const Arguments& args)
   varnam *handle;
   HandleScope scope;
 
-  if (args.Length() != 1) {
+  if (args.Length() != 2) {
     ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
     return scope.Close(Undefined());
   }
@@ -127,7 +127,8 @@ Handle<Value> Varnam::New(const Arguments& args)
     return scope.Close(Undefined());
   }
 
-  rc = varnam_config (handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, "learnings.varnam");
+  String::Utf8Value learnings_fname (args[1]->ToString());
+  rc = varnam_config (handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, *learnings_fname);
   if (rc != VARNAM_SUCCESS) {
     ThrowException(Exception::TypeError(String::New("Can't enable learnings")));
     return scope.Close(Undefined());
