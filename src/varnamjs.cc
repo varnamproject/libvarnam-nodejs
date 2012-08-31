@@ -1,30 +1,94 @@
 #include <string>
 #include <iostream>
+
 #include "varnamjs.h"
 
 using namespace v8;
 
-const Handle<Array> perform_transliteration(varnam *handle, const char *input)
+#ifdef _WIN32
+    #include <windows.h>
+
+    void vsleep(unsigned milliseconds)
+    {
+        Sleep(milliseconds);
+    }
+#else
+    #include <unistd.h>
+
+    void vsleep(unsigned milliseconds)
+    {
+        usleep(milliseconds * 1000); // takes microseconds
+    }
+#endif
+
+void perform_transliteration_async(uv_work_t *req)
 {
+    WorkerData *data = static_cast<WorkerData*>(req->data);
+
+    int tries = 0;
+    int maxtries = 10;
+    varnam* handle = NULL;
+    while (++tries < maxtries)
+    {
+      handle = data->clazz->GetHandle();
+      if (handle != NULL)
+        break;
+      vsleep (500);
+    }
+
+    if (handle == NULL)
+    {
+      // We couldn't acquire a handle after 10 tries. This is unusual.
+      data->errored = true;
+      data->error_message = "Couldn't acquire a varnam handle";
+      return;
+    }
+
     int rc,i;
     varray *words;
 
-    rc = varnam_transliterate(handle, input, &words);
+    rc = varnam_transliterate(handle, data->text_to_tl.c_str(), &words);
     if(rc != VARNAM_SUCCESS) {
-      Handle<Array> array =Array::New(1);
-      array->Set(0,String::New(varnam_get_last_error(handle)));
-      return array;
+      data->errored = true;
+      data->error_message = varnam_get_last_error(handle);
+    }
+    else {
+      for (i = 0; i < varray_length (words); i++)
+      {
+        vword *word = (vword*) varray_get (words, i);
+        data->tl_output.push_back (std::string(word->text));
+      }
     }
 
-    Handle<Array> array = Array::New(varray_length(words));
+    data->clazz->ReturnHandle(handle);
+}
 
-   for (i = 0; i < varray_length (words); i++)
-   {
-     vword *word = (vword*)varray_get (words, i);
-     std::string transliterated = std::string(word->text);
-     array->Set(i,String::New(transliterated.c_str()));
-   }
-    return array;
+// libuv invokes this in main thread. Safe to access V8 objects
+void after_transliteration(uv_work_t *req)
+{
+    WorkerData *data = static_cast<WorkerData*>(req->data);
+    if (data->errored)
+    {
+      Local<Object> error = Object::New();
+      error->Set(String::New("message"), String::New(data->error_message.c_str()));
+      Handle<Value> argv[] = { error, Null() };
+      data->callback->Call(Context::GetCurrent()->Global(), 2, argv);
+    }
+    else
+    {
+      Handle<Array> array = Array::New(data->tl_output.size());
+      std::vector<std::string>& result = data->tl_output;
+      int i = 0;
+      for(std::vector<std::string>::const_iterator it = result.begin(); it < result.end(); it++)
+      {
+        array->Set(i++, String::New((*it).c_str()));
+      }
+
+      Handle<Value> argv[] = { Null(), array };
+      data->callback->Call(Context::GetCurrent()->Global(), 2, argv);
+    }
+
+    delete data;
 }
 
 const std::string perform_reverse_transliteration(varnam *handle, const char *input)
@@ -53,9 +117,37 @@ const std::string perform_learn(varnam *handle, const char *input)
     return "Success";
 }
 
+// Each worker thread will use this function to get a varnam handle.
+// If no free handles are available, and we reached the maximum limit of handles,
+// this function returns null. Caller can call this function again after sometime.
 varnam* Varnam::GetHandle()
 {
-  return handles.front();
+  varnam* handle = NULL;
+
+  uv_mutex_lock (&mutex);
+  if (!handles_available.empty())
+  {
+    handle = handles_available.front();
+  }
+  else
+  {
+    std::string error;
+    // TODO: Handle errors
+    CreateNewVarnamHandle(&handle, error);
+    handles.push_back (handle);
+    handles_available.push (handle);
+  }
+
+  handles_available.pop();
+  uv_mutex_unlock (&mutex);
+  return handle;
+}
+
+void Varnam::ReturnHandle(varnam* handle)
+{
+  uv_mutex_lock (&mutex);
+  handles_available.push (handle);
+  uv_mutex_unlock (&mutex);
 }
 
 bool Varnam::InitializeFirstHandle(std::string& error)
@@ -64,9 +156,15 @@ bool Varnam::InitializeFirstHandle(std::string& error)
   bool created = CreateNewVarnamHandle(&handle, error);
   if (created)
   {
-    handles.push (handle);
+    handles.push_back (handle);
+    handles_available.push (handle);
   }
   return created;
+}
+
+int Varnam::GetHandleCount()
+{
+  return handles.size();
 }
 
 bool Varnam::CreateNewVarnamHandle(varnam** handle, std::string& error)
@@ -102,6 +200,8 @@ void Varnam::Init(Handle<Object> target)
       FunctionTemplate::New(ReverseTransliterate)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("close"),
       FunctionTemplate::New(Close)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("getOpenHandles"),
+      FunctionTemplate::New(GetOpenHandles)->GetFunction());
 
   Persistent<Function> constructor = Persistent<Function>::New(tpl->GetFunction());
   target->Set(String::NewSymbol("Varnam"), constructor);
@@ -135,17 +235,32 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
 {
   HandleScope scope;
 
-  if (args.Length() != 1) {
+  if (args.Length() != 2) {
     ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
     return scope.Close(Undefined());
   }
 
+  if (!args[0]->IsString()) {
+    ThrowException(Exception::TypeError(String::New("First argument should be string")));
+    return scope.Close(Undefined());
+  }
+
+  if (!args[1]->IsFunction()) {
+    ThrowException(Exception::TypeError(String::New("Second argument should be a function")));
+    return scope.Close(Undefined());
+  }
+
   String::Utf8Value input (args[0]->ToString());
-  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
 
-  Handle<Array> array =  perform_transliteration (obj->GetHandle(), *input);
+  WorkerData* data = new WorkerData;
+  data->request.data = data;
+  data->text_to_tl = *input;
+  data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+  data->clazz = ObjectWrap::Unwrap<Varnam>(args.This());
 
-  return scope.Close(array);
+  uv_queue_work(uv_default_loop(), &data->request, perform_transliteration_async, after_transliteration);
+
+  return scope.Close(Undefined());
 }
 
 Handle<Value> Varnam::ReverseTransliterate(const Arguments& args)
@@ -185,9 +300,25 @@ Handle<Value> Varnam::Close(const Arguments& args)
   HandleScope scope;
 
   Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
-  varnam_destroy (obj->GetHandle());
+  obj->Dispose();
 
   return scope.Close(Undefined());
+}
+
+Handle<Value> Varnam::GetOpenHandles(const Arguments& args)
+{
+  HandleScope scope;
+  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
+  return scope.Close(Number::New(obj->GetHandleCount()));
+}
+
+void Varnam::Dispose()
+{
+  std::vector<varnam*>::iterator it;
+  for (it = handles.begin(); it < handles.end(); it++)
+  {
+    varnam_destroy (*it);
+  }
 }
 
 void InitAll(Handle<Object> target)

@@ -9,12 +9,21 @@ else {
 var file = "ml-unicode.vst";
 
 var varnam = new v.Varnam(file, "learneddata");
-suggestions = varnam.transliterate("mOhan");
-suggestions.forEach(function(item){
-   console.log(item);
+
+for (i = 0; i < 2000; i++) {
+varnam.transliterate("mOhan", function(err, result) {
+	console.log(varnam.getOpenHandles());
 });
 
-rtl = varnam.reverseTransliterate(suggestions[0]);
-console.log(rtl);
+}
 
-varnam.close();
+console.log(varnam.getOpenHandles());
+
+// suggestions.forEach(function(item){
+//    console.log(item);
+// });
+
+// rtl = varnam.reverseTransliterate(suggestions[0]);
+// console.log(rtl);
+
+// varnam.close();
