@@ -55,12 +55,36 @@ const std::string perform_learn(varnam *handle, const char *input)
 
 varnam* Varnam::GetHandle()
 {
-  return handle;
+  return handles.front();
 }
 
-void Varnam::SetHandle(varnam *h)
+bool Varnam::InitializeFirstHandle(std::string& error)
 {
-  this->handle = h;
+  varnam* handle;
+  bool created = CreateNewVarnamHandle(&handle, error);
+  if (created)
+  {
+    handles.push (handle);
+  }
+  return created;
+}
+
+bool Varnam::CreateNewVarnamHandle(varnam** handle, std::string& error)
+{
+  char *msg;
+  int rc = varnam_init(scheme_file.c_str(), handle, &msg);
+  if (rc != VARNAM_SUCCESS) {
+    error += msg;
+    return false;
+  }
+
+  rc = varnam_config (*handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, learnings_file.c_str());
+  if (rc != VARNAM_SUCCESS) {
+    error += varnam_get_last_error (*handle);
+    return false;
+  }
+
+  return true;
 }
 
 void Varnam::Init(Handle<Object> target)
@@ -85,8 +109,6 @@ void Varnam::Init(Handle<Object> target)
 
 Handle<Value> Varnam::New(const Arguments& args)
 {
-  char *msg;
-  varnam *handle;
   HandleScope scope;
 
   if (args.Length() != 2) {
@@ -95,23 +117,17 @@ Handle<Value> Varnam::New(const Arguments& args)
   }
 
   String::Utf8Value filename (args[0]->ToString());
-  Varnam* obj = new Varnam();
-  int rc = varnam_init(*filename, &handle, &msg);
-  if (rc != VARNAM_SUCCESS) {
-    ThrowException(Exception::TypeError(String::New(msg)));
-    return scope.Close(Undefined());
-  }
-
   String::Utf8Value learnings_fname (args[1]->ToString());
-  rc = varnam_config (handle, VARNAM_CONFIG_ENABLE_SUGGESTIONS, *learnings_fname);
-  if (rc != VARNAM_SUCCESS) {
-    ThrowException(Exception::TypeError(String::New(varnam_get_last_error(handle))));
+
+  Varnam* obj = new Varnam(*filename, *learnings_fname);
+  std::string error;
+  bool initialized = obj->InitializeFirstHandle(error);
+  if (!initialized) {
+    ThrowException(Exception::TypeError(String::New(error.c_str())));
     return scope.Close(Undefined());
   }
 
-  obj->SetHandle(handle);
   obj->Wrap(args.This());
-
   return args.This();
 }
 
