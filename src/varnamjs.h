@@ -27,6 +27,7 @@ private:
 
   static v8::Handle<v8::Value> New(const v8::Arguments& args);
   static v8::Handle<v8::Value> Transliterate(const v8::Arguments& args);
+  static v8::Handle<v8::Value> TransliterateSync(const v8::Arguments& args);
   static v8::Handle<v8::Value> ReverseTransliterate(const v8::Arguments& args);
   static v8::Handle<v8::Value> Learn(const v8::Arguments& args);
   static v8::Handle<v8::Value> Close(const v8::Arguments& args);

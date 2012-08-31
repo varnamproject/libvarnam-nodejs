@@ -44,16 +44,15 @@ void perform_transliteration_async(uv_work_t *req)
       return;
     }
 
-    int rc,i;
     varray *words;
 
-    rc = varnam_transliterate(handle, data->text_to_tl.c_str(), &words);
+    int rc = varnam_transliterate(handle, data->text_to_tl.c_str(), &words);
     if(rc != VARNAM_SUCCESS) {
       data->errored = true;
       data->error_message = varnam_get_last_error(handle);
     }
     else {
-      for (i = 0; i < varray_length (words); i++)
+      for (int i = 0; i < varray_length (words); i++)
       {
         vword *word = (vword*) varray_get (words, i);
         data->tl_output.push_back (std::string(word->text));
@@ -88,6 +87,7 @@ void after_transliteration(uv_work_t *req)
       data->callback->Call(Context::GetCurrent()->Global(), 2, argv);
     }
 
+    data->callback.Dispose();
     delete data;
 }
 
@@ -133,7 +133,8 @@ varnam* Varnam::GetHandle()
   {
     std::string error;
     // TODO: Handle errors
-    CreateNewVarnamHandle(&handle, error);
+    bool created = CreateNewVarnamHandle(&handle, error);
+    assert(handle->internal);
     handles.push_back (handle);
     handles_available.push (handle);
   }
@@ -196,6 +197,8 @@ void Varnam::Init(Handle<Object> target)
       FunctionTemplate::New(Learn)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transliterate"),
       FunctionTemplate::New(Transliterate)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("transliterateSync"),
+      FunctionTemplate::New(TransliterateSync)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("reverseTransliterate"),
       FunctionTemplate::New(ReverseTransliterate)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("close"),
@@ -253,6 +256,9 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
   String::Utf8Value input (args[0]->ToString());
 
   WorkerData* data = new WorkerData;
+  data->errored = false;
+  data->tl_output = std::vector<std::string>();
+  data->error_message = "";
   data->request.data = data;
   data->text_to_tl = *input;
   data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
@@ -261,6 +267,43 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
   uv_queue_work(uv_default_loop(), &data->request, perform_transliteration_async, after_transliteration);
 
   return scope.Close(Undefined());
+}
+
+Handle<Value> Varnam::TransliterateSync(const Arguments& args)
+{
+  HandleScope scope;
+
+  if (args.Length() != 1) {
+    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+    return scope.Close(Undefined());
+  }
+
+  if (!args[0]->IsString()) {
+    ThrowException(Exception::TypeError(String::New("First argument should be string")));
+    return scope.Close(Undefined());
+  }
+
+  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
+  String::Utf8Value input (args[0]->ToString());
+
+  varray *words;
+  varnam *handle = obj->GetHandle();
+  int rc = varnam_transliterate(handle, *input, &words);
+  if(rc != VARNAM_SUCCESS) {
+    ThrowException(Exception::TypeError(String::New(varnam_get_last_error(handle))));
+    obj->ReturnHandle(handle);
+    return scope.Close(Undefined());
+  }
+
+  Handle<Array> array = Array::New(varray_length (words));
+  for (int i = 0; i < varray_length (words); i++)
+  {
+    vword *word = (vword*) varray_get (words, i);
+    array->Set(i, String::New(word->text));
+  }
+
+  obj->ReturnHandle(handle);
+  return scope.Close(array);
 }
 
 Handle<Value> Varnam::ReverseTransliterate(const Arguments& args)
