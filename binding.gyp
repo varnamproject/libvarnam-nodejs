@@ -3,7 +3,7 @@
     {
       "target_name": "varnam",
       'type': '<(library)',
-      "sources": [ "varnam.cc" ],
+      "sources": [ "src/varnamjs.cc" ],
     	'libraries':[
         '-lvarnam'
       ]
