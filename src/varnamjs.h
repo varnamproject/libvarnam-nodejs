@@ -19,7 +19,7 @@ private:
   Varnam(const char* scheme, const char* learnings)
   	: scheme_file(scheme), learnings_file(learnings)
   {
-  	uv_mutex_init (&mutex);
+      uv_mutex_init (&mutex);
   }
   ~Varnam() {}
 

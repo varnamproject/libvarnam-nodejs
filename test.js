@@ -1,32 +1,19 @@
-var os = require('os')
-if (os.type().toLowerCase() == 'darwin') {
-	var v = require('./varnam');
-}
-else {
-	var v = require('./varnam');
-}
+var v = require('./varnam');
 
 var file = "ml-unicode.vst";
 
 var varnam = new v.Varnam(file, "learneddata");
 
-for (i = 0; i < 20; i++) {
-	// console.log(varnam.transliterateSync('mohan'));
-varnam.transliterate("mohan " + i, function(err, result) {
-	console.log(result);
-	console.log(err);
-	// console.log(varnam.getOpenHandles());
-});
+for (i = 0; i < 100; i++) {
+	varnam.transliterate("test " + i, function(err, result) {
+		console.log(result);
+	});
 
+	// simulating delay
+	// Without this, it throws segmentation fault
+	var now = new Date().getTime();
+  	while(new Date().getTime() < now + 1) {
+   			// do nothing
+  	}
 }
 
-//console.log(varnam.getOpenHandles());
-
-// suggestions.forEach(function(item){
-//    console.log(item);
-// });
-
-// rtl = varnam.reverseTransliterate(suggestions[0]);
-// console.log(rtl);
-
-//varnam.close();

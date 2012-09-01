@@ -89,6 +89,7 @@ void after_transliteration(uv_work_t *req)
 
     data->callback.Dispose();
     delete data;
+    data = NULL;
 }
 
 const std::string perform_reverse_transliteration(varnam *handle, const char *input)
