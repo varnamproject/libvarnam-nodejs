@@ -14,7 +14,7 @@
     "name": "Jijesh Mohan",
     "email": "jijeshmohan@gmail.com"
   }],
-  "main": "varnam.node",
+  "main": "index.js",
   "dependencies": {
     "bindings" : "1.0.0"
   },
