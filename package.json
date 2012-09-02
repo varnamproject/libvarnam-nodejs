@@ -7,6 +7,13 @@
     "url": "git://github.com/navaneeth/libvarnam-nodejs.git"
   },
   "author": "Navaneeth K N <navaneethkn@gmail.com>",
+  "contributors": [{
+    "name": "Navaneeth K N",
+    "email": "navaneethkn@gmail.com"
+  }, {
+    "name": "Jijesh Mohan",
+    "email": "jijeshmohan@gmail.com"
+  }],
   "main": "varnam.node",
   "dependencies": {
     "bindings" : "1.0.0"

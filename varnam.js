@@ -1,0 +1,1 @@
+module.exports=require('./build/Release/lib.target/varnam.node');
