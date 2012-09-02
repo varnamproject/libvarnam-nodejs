@@ -134,7 +134,7 @@ varnam* Varnam::GetHandle()
   {
     std::string error;
     // TODO: Handle errors
-    bool created = CreateNewVarnamHandle(&handle, error);
+    CreateNewVarnamHandle(&handle, error);
     assert(handle->internal);
     handles.push_back (handle);
     handles_available.push (handle);
