@@ -33,7 +33,7 @@ void perform_transliteration_async(uv_work_t *req)
       handle = data->clazz->GetHandle();
       if (handle != NULL)
         break;
-      vsleep (500);
+      vsleep (10);
     }
 
     if (handle == NULL)
@@ -87,6 +87,7 @@ void after_transliteration(uv_work_t *req)
       data->callback->Call(Context::GetCurrent()->Global(), 2, argv);
     }
 
+    data->clazz->Unref();
     data->callback.Dispose();
     delete data;
     data = NULL;
@@ -264,6 +265,7 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
   data->text_to_tl = *input;
   data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
   data->clazz = ObjectWrap::Unwrap<Varnam>(args.This());
+  data->clazz->Ref();
 
   uv_queue_work(uv_default_loop(), &data->request, perform_transliteration_async, after_transliteration);
 

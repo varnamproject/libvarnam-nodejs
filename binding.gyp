@@ -5,7 +5,8 @@
       "sources": [ "src/varnamjs.cc" ],
     	'libraries':[
         '-lvarnam'
-      ]
+      ],
+      'include_dirs': ['<!(echo $VARNAM_INCLUDE_DIR)']
     }
   ]
 }

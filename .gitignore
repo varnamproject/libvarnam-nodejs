@@ -5,3 +5,4 @@ learneddata*
 *.vst
 ou.txt
 tmp/
+node_modules/

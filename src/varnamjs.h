@@ -14,6 +14,8 @@ public:
   void ReturnHandle(varnam* handle);
   void Dispose();
   int GetHandleCount();
+  void Ref() { node::ObjectWrap::Ref(); }
+  void Unref() { node::ObjectWrap::Unref(); }
 
 private:
   Varnam(const char* scheme, const char* learnings)
@@ -21,7 +23,10 @@ private:
   {
       uv_mutex_init (&mutex);
   }
-  ~Varnam() {}
+  ~Varnam()
+  {
+      uv_mutex_destroy (&mutex);
+  }
 
   bool CreateNewVarnamHandle(varnam** handle, std::string& error);
 

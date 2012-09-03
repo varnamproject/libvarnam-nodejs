@@ -1,7 +1,7 @@
 {
   "name": "varnam",
   "description": "NodeJs bindings to libvarnam",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "repository": {
     "type": "git",
     "url": "git://github.com/navaneeth/libvarnam-nodejs.git"

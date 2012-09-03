@@ -1,0 +1,4 @@
+examples/
+*.vst
+node_modules/
+tmp/
