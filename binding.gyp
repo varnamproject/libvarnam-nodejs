@@ -3,10 +3,10 @@
     {
       "target_name": "varnam",
       "sources": [ "src/varnamjs.cc" ],
-    	'libraries':[
-        '-lvarnam'
-      ],
-      'include_dirs': ['<!(echo $VARNAM_INCLUDE_DIR)']
+      'include_dirs': ['<!(echo $VARNAM_INCLUDE_DIR)'],
+    	'link_settings': {
+          'ldflags': ['-L<!(echo $VARNAM_LIB_DIR)', '-lvarnam']
+      }
     }
   ]
 }
