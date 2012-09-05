@@ -14,6 +14,22 @@ public:
   void ReturnHandle(varnam* handle);
   void Dispose();
   int GetHandleCount();
+
+  uv_mutex_t* GetMutexForLearn()
+  {
+      return &learn_mutex;
+  }
+
+  varnam* GetHandleForLearn()
+  {
+      return learn_handle;
+  }
+
+  void SetHandleToLearn(varnam* h)
+  {
+      learn_handle = h;
+  }
+
   void Ref() { node::ObjectWrap::Ref(); }
   void Unref() { node::ObjectWrap::Unref(); }
 
@@ -22,10 +38,12 @@ private:
   	: scheme_file(scheme), learnings_file(learnings)
   {
       uv_mutex_init (&mutex);
+      uv_mutex_init (&learn_mutex);
   }
   ~Varnam()
   {
       uv_mutex_destroy (&mutex);
+      uv_mutex_destroy (&learn_mutex);
   }
 
   bool CreateNewVarnamHandle(varnam** handle, std::string& error);
@@ -41,9 +59,11 @@ private:
   const std::string scheme_file;
   const std::string learnings_file;
 
+  varnam* learn_handle;
   std::vector<varnam*> handles;           // Contains reference to all handles
   std::queue<varnam*> handles_available;  // Contains handles which are ready to do work
   uv_mutex_t mutex;
+  uv_mutex_t learn_mutex;
 };
 
 struct WorkerData
@@ -54,6 +74,8 @@ struct WorkerData
 	// For transliteration
 	std::string text_to_tl;
 	std::vector<std::string> tl_output;
+
+  std::string word_to_learn;
 
 	bool errored;
 	std::string error_message;

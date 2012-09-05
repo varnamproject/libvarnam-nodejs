@@ -2,3 +2,5 @@ examples/
 *.vst
 node_modules/
 tmp/
+learneddata*
+learned*

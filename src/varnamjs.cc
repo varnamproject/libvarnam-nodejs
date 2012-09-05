@@ -93,6 +93,44 @@ void after_transliteration(uv_work_t *req)
     data = NULL;
 }
 
+void perform_learn_async(uv_work_t *req)
+{
+    WorkerData *data = static_cast<WorkerData*>(req->data);
+    Varnam* clazz = data->clazz;
+
+    uv_mutex_lock (clazz->GetMutexForLearn());
+    data->errored = false;
+    varnam* handle = clazz->GetHandleForLearn();
+    int rc = varnam_learn (handle, data->word_to_learn.c_str());
+    if (rc != VARNAM_SUCCESS) {
+      data->errored = true;
+      data->error_message = varnam_get_last_error(handle);
+    }
+    uv_mutex_unlock (clazz->GetMutexForLearn());
+}
+
+void after_learn(uv_work_t* req)
+{
+    WorkerData *data = static_cast<WorkerData*>(req->data);
+    if (data->errored)
+    {
+      Local<Object> error = Object::New();
+      error->Set(String::New("message"), String::New(data->error_message.c_str()));
+      Handle<Value> argv[] = { error };
+      data->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+    }
+    else
+    {
+      Handle<Value> argv[] = { Null() };
+      data->callback->Call(Context::GetCurrent()->Global(), 1, argv);
+    }
+
+    data->clazz->Unref();
+    data->callback.Dispose();
+    delete data;
+    data = NULL;
+}
+
 const std::string perform_reverse_transliteration(varnam *handle, const char *input)
 {
     int rc;
@@ -162,6 +200,11 @@ bool Varnam::InitializeFirstHandle(std::string& error)
     handles.push_back (handle);
     handles_available.push (handle);
   }
+
+  // Initialize handle to learn
+  varnam* handle2;
+  created = CreateNewVarnamHandle(&handle2, error);
+  SetHandleToLearn(handle2);
   return created;
 }
 
@@ -329,16 +372,37 @@ Handle<Value> Varnam::Learn(const Arguments& args)
 {
   HandleScope scope;
 
-  if (args.Length() != 1) {
+  if (args.Length() != 2) {
     ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
     return scope.Close(Undefined());
   }
 
-  String::Utf8Value input (args[0]->ToString());
-  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
-  std::string result = perform_learn (obj->GetHandle(), *input);
+  if (!args[0]->IsString()) {
+    ThrowException(Exception::TypeError(String::New("First argument should be string")));
+    return scope.Close(Undefined());
+  }
 
-  return scope.Close(String::New(result.c_str()));
+  if (!args[1]->IsFunction()) {
+    ThrowException(Exception::TypeError(String::New("Second argument should be a function")));
+    return scope.Close(Undefined());
+  }
+
+  String::Utf8Value input (args[0]->ToString());
+
+  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
+  obj->Ref();
+
+  WorkerData* data = new WorkerData;
+  data->errored = false;
+  data->request.data = data;
+  data->error_message = "";
+  data->word_to_learn = *input;
+  data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
+  data->clazz = obj;
+
+  uv_queue_work (uv_default_loop(), &data->request, perform_learn_async, after_learn);
+
+  return scope.Close(Undefined());
 }
 
 Handle<Value> Varnam::Close(const Arguments& args)
