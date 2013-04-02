@@ -310,7 +310,7 @@ Handle<Value> Varnam::Transliterate(const Arguments& args)
   data->clazz = ObjectWrap::Unwrap<Varnam>(args.This());
   data->clazz->Ref();
 
-  uv_queue_work(uv_default_loop(), &data->request, perform_transliteration_async, after_transliteration);
+  uv_queue_work(uv_default_loop(), &data->request, perform_transliteration_async, (uv_after_work_cb) after_transliteration);
 
   return scope.Close(Undefined());
 }
@@ -400,7 +400,7 @@ Handle<Value> Varnam::Learn(const Arguments& args)
   data->callback = Persistent<Function>::New(Local<Function>::Cast(args[1]));
   data->clazz = obj;
 
-  uv_queue_work (uv_default_loop(), &data->request, perform_learn_async, after_learn);
+  uv_queue_work (uv_default_loop(), &data->request, perform_learn_async, (uv_after_work_cb) after_learn);
 
   return scope.Close(Undefined());
 }

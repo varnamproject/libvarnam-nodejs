@@ -1,7 +1,7 @@
 {
   "name": "varnam",
   "description": "NodeJs bindings to libvarnam",
-  "version": "0.2.7",
+  "version": "2.0.0",
   "repository": {
     "type": "git",
     "url": "git://github.com/navaneeth/libvarnam-nodejs.git"
@@ -19,7 +19,7 @@
     "bindings" : "1.0.0"
   },
   "engines": {
-    "node": ">= 0.6.1"
+    "node": ">= 0.10.2"
   }
 }
 
