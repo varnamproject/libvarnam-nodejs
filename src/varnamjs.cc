@@ -240,6 +240,8 @@ void Varnam::Init(Handle<Object> target)
   // Prototype
   tpl->PrototypeTemplate()->Set(String::NewSymbol("learn"),
       FunctionTemplate::New(Learn)->GetFunction());
+  tpl->PrototypeTemplate()->Set(String::NewSymbol("isKnownWord"),
+      FunctionTemplate::New(IsKnownWord)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transliterate"),
       FunctionTemplate::New(Transliterate)->GetFunction());
   tpl->PrototypeTemplate()->Set(String::NewSymbol("transliterateSync"),
@@ -405,6 +407,27 @@ Handle<Value> Varnam::Learn(const Arguments& args)
   return scope.Close(Undefined());
 }
 
+Handle<Value> Varnam::IsKnownWord(const Arguments& args)
+{
+  HandleScope scope;
+
+  if (args.Length() != 1) {
+    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+    return scope.Close(Undefined());
+  }
+
+  if (!args[0]->IsString()) {
+    ThrowException(Exception::TypeError(String::New("First argument should be string")));
+    return scope.Close(Undefined());
+  }
+
+  String::Utf8Value input (args[0]->ToString());
+
+  Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
+  bool known = varnam_is_known_word (obj->GetHandleForLearn(), *input);
+
+  return scope.Close(Boolean::New(known));
+}
 Handle<Value> Varnam::Close(const Arguments& args)
 {
   HandleScope scope;
