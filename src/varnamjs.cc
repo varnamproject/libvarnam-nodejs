@@ -424,7 +424,7 @@ Handle<Value> Varnam::IsKnownWord(const Arguments& args)
   String::Utf8Value input (args[0]->ToString());
 
   Varnam* obj = ObjectWrap::Unwrap<Varnam>(args.This());
-  bool known = varnam_is_known_word (obj->GetHandleForLearn(), *input);
+  bool known = varnam_is_known_word (obj->GetHandle(), *input);
 
   return scope.Close(Boolean::New(known));
 }
